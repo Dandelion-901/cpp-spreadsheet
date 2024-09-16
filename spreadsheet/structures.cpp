@@ -17,9 +17,9 @@ namespace {
     static int ColumnToIndex(const std::string_view col) {
         int index = 0;
         for (char c : col) {
-            if (!std::isupper(c))
+            if (!std::isupper(c)) {
                 return -1;
-
+            }
             index = index * LETTERS + (c - 'A' + 1);
         }
         return --index;
@@ -51,10 +51,12 @@ bool Position::IsValid() const {
 }
 
 std::string Position::ToString() const {
-    if (IsValid())
+    if (IsValid()) {
         return IndexToColumn(col) + std::to_string(row + 1);
-    else
+    }
+    else {
         return ""s;
+    }
 }
 
 Position Position::FromString(std::string_view str) {
@@ -63,23 +65,33 @@ Position Position::FromString(std::string_view str) {
         return pos;
     }
 
-    const auto row_pos = std::find_if(str.begin(), str.end(),
-        [](char c) { return std::isdigit(c); });
-    if (str.end() == row_pos)
+    const auto row_pos =
+        std::find_if(str.begin(), str.end(),
+            [](char c) {
+                return std::isdigit(c);
+            });
+    if (str.end() == row_pos) {
         return pos;
-    const auto end_pos = std::find_if_not(row_pos, str.end(),
-        [](char c) { return std::isdigit(c); });
-    if (str.end() != end_pos)
+    }
+    const auto end_pos =
+        std::find_if_not(row_pos, str.end(),
+            [](char c) {
+                return std::isdigit(c);
+            });
+    if (str.end() != end_pos) {
         return pos;
+    }
 
     const size_t row_id = std::distance(str.begin(), row_pos);
     pos.col = ColumnToIndex(str.substr(0, row_id));
     pos.row = std::stoi(std::string(str.substr(row_id))) - 1;
 
-    if (pos.IsValid())
+    if (pos.IsValid()) {
         return pos;
-    else
+    }
+    else {
         return Position::NONE;
+    }
 }
 
 bool Size::operator==(Size rhs) const {

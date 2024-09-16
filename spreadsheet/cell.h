@@ -11,7 +11,7 @@ public:
     Cell();
     ~Cell();
 
-    void Set(std::string text, SheetInterface* sheet);
+    void Set(std::string text, const SheetInterface* sheet);
     void Clear();
 
     Value GetValue() const override;

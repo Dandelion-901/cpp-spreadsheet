@@ -10,11 +10,20 @@
 
 using namespace std::literals;
 
+namespace {
+
+static void CheckIfValid(Position pos) {
+    if (!pos.IsValid()) {
+        throw InvalidPositionException("Wrong position");
+    }
+}
+
+}   // namespace
+
 Sheet::~Sheet() = default;
 
 void Sheet::SetCell(Position pos, std::string text) {
-    if (!pos.IsValid())
-        throw InvalidPositionException("Wrong position");
+    CheckIfValid(pos);
 
     if (!IsInScope(pos)) {
         Size new_scope{
@@ -32,33 +41,33 @@ void Sheet::SetCell(Position pos, std::string text) {
 }
 
 const CellInterface* Sheet::GetCell(Position pos) const {
-    if (!pos.IsValid())
-        throw InvalidPositionException("Wrong position");
+    CheckIfValid(pos);
 
-    if (!IsInScope(pos))
+    if (!IsInScope(pos)) {
         return nullptr;
+    }
 
     return sheet_.at(pos.row).at(pos.col).get();
 }
 CellInterface* Sheet::GetCell(Position pos) {
-    if (!pos.IsValid())
-        throw InvalidPositionException("Wrong position");
+    CheckIfValid(pos);
 
-    if (!IsInScope(pos))
+    if (!IsInScope(pos)) {
         return nullptr;
+    }
 
     return sheet_.at(pos.row).at(pos.col).get();
 }
 
 void Sheet::ClearCell(Position pos) {
-    if (!pos.IsValid())
-        throw InvalidPositionException("Wrong position");
+    CheckIfValid(pos);
 
-    if (!IsInScope(pos))
+    if (!IsInScope(pos)) {
         return;
+    }
 
     auto& cell(sheet_.at(pos.row).at(pos.col));
-    cell->EraseDependencies();
+    cell->Clear();
     cell.reset();
     if (IsEdgePos(pos))
         RecomputeScope();
@@ -74,8 +83,9 @@ void Sheet::PrintValues(std::ostream& output) const {
             if (cell) {
                 std::visit([&output](auto&& arg) { output << arg; }, cell->GetValue());
             }
-            if (&row.back() != &cell)
+            if (&row.back() != &cell) {
                 output << '\t';
+            }
         }
         output << std::endl;
     }
@@ -86,8 +96,9 @@ void Sheet::PrintTexts(std::ostream& output) const {
             if (cell) {
                 output << cell->GetText();
             }
-            if (&row.back() != &cell)
+            if (&row.back() != &cell) {
                 output << '\t';
+            }
         }
         output << std::endl;
     }
@@ -110,6 +121,9 @@ bool Sheet::IsEdgePos(Position pos) const {
 }
 
 void Sheet::ResizeScope(Size val) {
+    if (scope_ == val) {
+        return;
+    }
     sheet_.resize(val.rows);
     for (auto& row : sheet_) {
         row.resize(val.cols);
@@ -124,19 +138,18 @@ void Sheet::RecomputeScope() {
     for (int r = scope_.rows; r != 0; --r) {
         for (int c = scope_.cols; c != 0; --c) {
             if (sheet_.at(r - 1).at(c - 1)) {
-                ns.rows = ns.rows < r ? r : ns.rows;
-                ns.cols = ns.cols < c ? c : ns.cols;
+                ns.rows = std::max(ns.rows, r);
+                ns.cols = std::max(ns.cols, c);
                 break;
             }
-            else if (c < ns.cols)
+            else if (c < ns.cols) {
                 break;
+            }
         }
     }
 
-    if (scope_ == ns)
-        return;
-    else
-        ResizeScope(ns);
+    ResizeScope(ns);
+    return;
 }
 
 std::unique_ptr<SheetInterface> CreateSheet() {

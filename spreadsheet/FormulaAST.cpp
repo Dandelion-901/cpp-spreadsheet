@@ -145,19 +145,21 @@ public:
 
     double Evaluate(const SheetInterface& sheet) const override {
         double result = 0;
+        const double lhs_value = lhs_->Evaluate(sheet);
+        const double rhs_value = rhs_->Evaluate(sheet);
 
         switch (type_) {
         case '+':
-            result = lhs_->Evaluate(sheet) + rhs_->Evaluate(sheet);
+            result = lhs_value + rhs_value;
             break;
         case '-':
-            result = lhs_->Evaluate(sheet) - rhs_->Evaluate(sheet);
+            result = lhs_value - rhs_value;
             break;
         case '*':
-            result = lhs_->Evaluate(sheet) * rhs_->Evaluate(sheet);
+            result = lhs_value * rhs_value;
             break;
         case '/':
-            result = lhs_->Evaluate(sheet) / rhs_->Evaluate(sheet);
+            result = lhs_value / rhs_value;
             break;
         default:
             throw FormulaException("Unsupported operation");
@@ -204,11 +206,13 @@ public:
     }
 
     double Evaluate(const SheetInterface& sheet) const override {
+        const double operand_value = operand_->Evaluate(sheet);
+
         switch (type_) {
         case '+':
-            return operand_->Evaluate(sheet);
+            return operand_value;
         case '-':
-            return -operand_->Evaluate(sheet);
+            return -operand_value;
         default:
             throw FormulaException("Unsupported operation");
         }
@@ -247,9 +251,9 @@ public:
             throw FormulaError(FormulaError::Category::Ref);
 
         const auto cell = sheet.GetCell(*cell_);
-        if (!cell)
+        if (!cell) {
             return 0;
-
+        }
         const auto value = cell->GetValue();
         switch (value.index()) {
         case 0:

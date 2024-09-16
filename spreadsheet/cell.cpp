@@ -9,19 +9,16 @@
 namespace {
 
 static bool IsNumber(const std::string& text) {
-    if (text.empty())
+    if (text.empty()) {
         return false;
-
-    const auto not_digit = std::find_if_not(
+    }
+    const auto not_digit_it = std::find_if_not(
         text.begin(), text.end(),
         [](const char ch) {
             return std::isdigit(ch);
         });
 
-    if (text.end() == not_digit)
-        return true;
-
-    return false;
+    return text.end() == not_digit_it;
 }
 
 }   // namespace
@@ -32,7 +29,7 @@ Cell::Cell() : impl_(std::make_unique<EmptyImpl>()) {}
 
 Cell::~Cell() = default;
 
-void Cell::Set(std::string text, SheetInterface* sheet) {
+void Cell::Set(std::string text, const SheetInterface* sheet) {
     auto new_cell = std::make_unique<Cell>();
     new_cell->sheet_ = sheet;
 
@@ -47,8 +44,9 @@ void Cell::Set(std::string text, SheetInterface* sheet) {
 
     const auto ref = new_cell->impl_->GetReferences();
     for (Position pos : ref) {
-        if (nullptr == sheet->GetCell(pos))
-            sheet->SetCell(pos, "");
+        if (nullptr == sheet->GetCell(pos)) {
+            const_cast<SheetInterface*>(sheet)->SetCell(pos, "");
+        }
         new_cell->dependencies_.insert(
             reinterpret_cast<const Cell*>(sheet->GetCell(pos))
         );
@@ -62,7 +60,7 @@ void Cell::Set(std::string text, SheetInterface* sheet) {
 }
 
 void Cell::Clear() {
-    impl_ = std::make_unique<EmptyImpl>();
+    Set("", sheet_);
 }
 
 Cell::Value Cell::GetValue() const {
@@ -100,11 +98,12 @@ void Cell::ReleaseOldCell(Cell& new_cell) {
 }
 
 void Cell::WalkByDependencies(std::unordered_set<const Cell*>& passed) const {
-    if (passed.count(this))
+    if (passed.count(this)) {
         throw CircularDependencyException("Circular dependency found");
-
-    if (dependencies_.empty())
+    }
+    if (dependencies_.empty()) {
         return;
+    }
 
     passed.insert(this);
     for (auto& c : dependencies_) {
@@ -115,8 +114,9 @@ void Cell::WalkByDependencies(std::unordered_set<const Cell*>& passed) const {
 void Cell::InvalidateValue() const {
     if (typeid(FormulaImpl) == typeid(impl_)) {
         impl_->Invalidate();
-        for (auto& c : dependants_)
+        for (auto& c : dependants_) {
             c->InvalidateValue();
+        }
     }
 }
 
@@ -140,12 +140,15 @@ std::string Cell::TextImpl::GetText() const {
     return text_;
 }
 CellInterface::Value Cell::TextImpl::GetValue(const SheetInterface&) const {
-    if (!text_.empty() && ESCAPE_SIGN == text_.front())
+    if (!text_.empty() && ESCAPE_SIGN == text_.front()) {
         return text_.substr(1);
-    else if (IsNumber(text_))
+    }
+    else if (IsNumber(text_)) {
         return std::stod(text_);
-    else
+    }
+    else {
         return text_;
+    }
 }
 std::vector<Position> Cell::TextImpl::GetReferences() const {
     return {};
@@ -162,10 +165,12 @@ std::string Cell::FormulaImpl::GetText() const {
 CellInterface::Value Cell::FormulaImpl::GetValue(const SheetInterface& sheet) const {
     if (!cache_.has_value()) {
         const auto val = expr_->Evaluate(sheet);
-        if (std::holds_alternative<double>(val))
+        if (std::holds_alternative<double>(val)) {
             cache_.emplace(std::get<double>(val));
-        else
+        }
+        else {
             cache_.emplace(std::get<FormulaError>(val));
+        }
     }
     return cache_.value();
 }
