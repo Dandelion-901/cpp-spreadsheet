@@ -8,6 +8,13 @@
 #include <variant>
 #include <vector>
 
+namespace pos_convert {
+
+int ColumnToIndex(const std::string_view col);
+std::string IndexToColumn(int index);
+
+}   // namespace pos_convert
+
 // Позиция ячейки. Индексация с нуля.
 struct Position {
     int row = 0;

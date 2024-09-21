@@ -12,28 +12,24 @@ const int MAX_POS_LETTER_COUNT = 3;
 
 const Position Position::NONE = {-1, -1};
 
-namespace {
-
-    static int ColumnToIndex(const std::string_view col) {
-        int index = 0;
-        for (char c : col) {
-            if (!std::isupper(c)) {
-                return -1;
-            }
-            index = index * LETTERS + (c - 'A' + 1);
+int pos_convert::ColumnToIndex(const std::string_view col) {
+    int index = 0;
+    for (char c : col) {
+        if (!std::isupper(c)) {
+            return -1;
         }
-        return --index;
+        index = index * LETTERS + (c - 'A' + 1);
     }
-    static std::string IndexToColumn(int index) {
-        std::string col;
-        while (0 <= index) {
-            col = static_cast<char>(index % LETTERS + 'A') + col;
-            index = index / LETTERS - 1;
-        }
-        return col;
+    return --index;
+}
+std::string pos_convert::IndexToColumn(int index) {
+    std::string col;
+    while (0 <= index) {
+        col = static_cast<char>(index % LETTERS + 'A') + col;
+        index = index / LETTERS - 1;
     }
-
-}   // namespace
+    return col;
+}
 
 bool Position::operator==(Position rhs) const {
     return row == rhs.row && col == rhs.col;
@@ -52,7 +48,7 @@ bool Position::IsValid() const {
 
 std::string Position::ToString() const {
     if (IsValid()) {
-        return IndexToColumn(col) + std::to_string(row + 1);
+        return pos_convert::IndexToColumn(col) + std::to_string(row + 1);
     }
     else {
         return ""s;
@@ -83,7 +79,7 @@ Position Position::FromString(std::string_view str) {
     }
 
     const size_t row_id = std::distance(str.begin(), row_pos);
-    pos.col = ColumnToIndex(str.substr(0, row_id));
+    pos.col = pos_convert::ColumnToIndex(str.substr(0, row_id));
     pos.row = std::stoi(std::string(str.substr(row_id))) - 1;
 
     if (pos.IsValid()) {
