@@ -7,9 +7,20 @@
 #include "tests.h"
 
 int main() {
-	//RunTests();
 
 	setlocale(LC_ALL, "Russian");
+
+	try {
+		RunTests();
+		std::cout << "\nВсе тесты пройдены успешно, нажми \"Enter\" чтобы продолжить\n";
+		std::cin.get();
+		system("cls");
+	}
+	catch (...) {
+		std::cout << "\nПройдены не все тесты, завершение программы, нажми \"Enter\" чтобы продолжить\n";
+		std::cin.get();
+		return 0;
+	}
 
 	auto sheet = CreateSheet();
 	UserInterfece interf(std::cin, std::cout, *sheet);

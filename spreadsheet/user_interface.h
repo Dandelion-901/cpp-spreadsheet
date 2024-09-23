@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.h"
+#include "sheet.h"
 #include "formula.h"
 
 #include <iostream>
@@ -34,10 +34,10 @@ public:
 class Executor {
 private:
 	std::ostream& out_;
-	SheetInterface& sheet_;
+	Sheet& sheet_;
 
 public:
-	explicit Executor(std::ostream& output, SheetInterface& sheet);
+	explicit Executor(std::ostream& output, Sheet& sheet);
 
 	void Execute(InputData& data);
 };

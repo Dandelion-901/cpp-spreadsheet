@@ -80,7 +80,7 @@ InputData InputReader::Read() {
     return data;
 }
 
-Executor::Executor(std::ostream& output, SheetInterface& sheet)
+Executor::Executor(std::ostream& output, Sheet& sheet)
     : out_(output)
     , sheet_(sheet)
 {}
@@ -115,12 +115,12 @@ void Executor::Execute(InputData & data) {
         }
         case (Actions::PRINT_VALUE): {
             system("cls");
-            sheet_.PrintValues(out_);
+            sheet_.DrawSheet(out_, false);
             break;
         }
         case (Actions::PRINT_TEXT): {
             system("cls");
-            sheet_.PrintTexts(out_);
+            sheet_.DrawSheet(out_, true);
             break;
         }
         default:
@@ -134,5 +134,5 @@ void Executor::Execute(InputData & data) {
 
 UserInterfece::UserInterfece(std::istream& input, std::ostream& output, SheetInterface& sheet)
     : InputReader(input)
-    , Executor(output, sheet)
+    , Executor(output, reinterpret_cast<Sheet&>(sheet))
 {}

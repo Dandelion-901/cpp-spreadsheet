@@ -5,10 +5,8 @@
 
 #include <algorithm>
 #include <functional>
-#include <iomanip>
 #include <iostream>
 #include <optional>
-#include <sstream>
 
 using namespace std::literals;
 
@@ -18,19 +16,6 @@ static void CheckIfValid(Position pos) {
     if (!pos.IsValid()) {
         throw InvalidPositionException("Wrong position");
     }
-}
-
-static Sheet::Align GetCellAlign(int col, Cell& cell) {
-    Sheet::Align align{};
-    std::visit(
-        [&align](auto&& args) {
-            std::ostringstream txt_stream;
-            txt_stream << args;
-            align.val = txt_stream.str().size();
-        }, cell.GetValue()
-            );
-    align.txt = cell.GetText().size();
-    return align;
 }
 
 }   // namespace
@@ -53,7 +38,7 @@ void Sheet::SetCell(Position pos, std::string text) {
         cell = std::make_unique<Cell>();
     }
     cell->Set(text, this);
-    align_.at(pos.col).Max(GetCellAlign(pos.col, *cell));
+    align_.at(pos.col).Max(sheet_draw::GetCellAlign(pos.col, GetConcreteCell(pos)));
 }
 
 const CellInterface* Sheet::GetCell(Position pos) const {
@@ -98,75 +83,25 @@ Size Sheet::GetPrintableSize() const {
     return scope_;
 }
 
-// Вырвнивание для номера строки
-static const int ROW_NUM_ALIGN = 3;
-// Базовое выравнивание для пустой ячейки
-static const int BASIC_ALLIGN = 3;
-// Разделитель ячеек
-static const char DELIM = '|';
-
 void Sheet::PrintValues(std::ostream& output) const {
-    using namespace std;
-
-    output << setw(ROW_NUM_ALIGN) << "c++";
-
-    const Size scope = GetPrintableSize();
-    for (int i{}; i < scope.cols; ++i) {
-        const auto a = max(BASIC_ALLIGN, align_.at(i).val);
-        output << DELIM
-               << setw(a) << pos_convert::IndexToColumn(i);
-    }
-    output << endl;
-
-    for (size_t row{}; row < scope.rows; ++row) {
-        output << setw(ROW_NUM_ALIGN) << row + 1;
-        for (size_t col{}; col < scope.cols; ++col) {
-            output << DELIM;
-
-            auto& cell = sheet_.at(row).at(col);
-            const auto a = max(BASIC_ALLIGN, align_.at(col).val);
-            if (cell) {
-                visit(
-                    [&output, &a](auto&& arg) {
-                        output << setw(a) << arg;
-                    }, cell->GetValue());
-            }
-            else {
-                output << setw(a) << ' ';
-            }
-        }
-        output << std::endl;
-    }
+    PrintCells(output, false);
 }
 void Sheet::PrintTexts(std::ostream& output) const {
-    using namespace std;
+    PrintCells(output, true);
+}
 
-    output << setw(ROW_NUM_ALIGN) << "c++";
+void Sheet::DrawSheet(std::ostream& output, bool is_text) const {
+    using namespace sheet_draw;
 
-    const Size scope = GetPrintableSize();
-    for (int i{}; i < scope.cols; ++i) {
-        const auto a = max(BASIC_ALLIGN, align_.at(i).txt);
-        output << DELIM
-               << setw(a) << pos_convert::IndexToColumn(i);
+    SheetDrawer drawer(output, align_);
+
+    //drawer.DrawEdgeLine(is_text);
+    drawer.DrawHeader(is_text);
+    for (int i{}; i < scope_.rows; ++i) {
+        drawer.DrawDelimLine(is_text);
+        drawer.DrawRow(i + 1, sheet_.at(i), is_text);
     }
-    output << endl;
-
-    for (size_t row{}; row < scope.rows; ++row) {
-        output << right << setw(ROW_NUM_ALIGN) << row;
-        for (size_t col{}; col < scope.cols; ++col) {
-            output << DELIM;
-
-            auto& cell = sheet_.at(row).at(col);
-            const auto a = max(BASIC_ALLIGN, align_.at(col).txt);
-            if (cell) {
-                output << setw(a) << cell->GetText();
-            }
-            else {
-                output << setw(a) << ' ';
-            }
-        }
-        output << std::endl;
-    }
+    //drawer.DrawEdgeLine(is_text);
 }
 
 const Cell* Sheet::GetConcreteCell(Position pos) const {
@@ -197,19 +132,6 @@ void Sheet::ResizeScope(Size val) {
     scope_ = val;
 }
 
-void Sheet::FindAndSetMaxAlign(int col) {
-    Align new_align{};
-    const Size scope = GetPrintableSize();
-    for (int i = 0; i < scope.rows; ++i) {
-        const auto cell{ sheet_.at(i).at(col).get() };
-        if (cell) {
-            const Align cell_align{ GetCellAlign(col, *cell)};
-            new_align.Max(cell_align);
-        }
-    }
-    align_.at(col) = new_align;
-}
-
 void Sheet::RecomputeScope() {
     // new scope
     Size ns{};
@@ -231,11 +153,41 @@ void Sheet::RecomputeScope() {
     return;
 }
 
-std::unique_ptr<SheetInterface> CreateSheet() {
-    return std::make_unique<Sheet>();
+void Sheet::FindAndSetMaxAlign(int col) {
+    if (align_.empty()) {
+        return;
+    }
+
+    sheet_draw::Align new_align{};
+    for (int i = 0; i < scope_.rows; ++i) {
+        const auto cell{ sheet_.at(i).at(col).get() };
+        new_align.Max(sheet_draw::GetCellAlign(col, cell));
+    }
+    align_.at(col) = new_align;
 }
 
-void Sheet::Align::Max(Align other) {
-    val = std::max(val, other.val);
-    txt = std::max(txt, other.txt);
+void Sheet::PrintCells(std::ostream& output, bool is_text) const {
+    for (const auto& row : sheet_) {
+        for (const auto& cell : row) {
+            if (cell) {
+                if (is_text) {
+                    output << cell->GetText();
+                }
+                else {
+                    std::visit(
+                        [&output](auto&& arg) {
+                            output << arg;
+                        }, cell->GetValue());
+                }
+            }
+            if (&row.back() != &cell) {
+                output << '\t';
+            }
+        }
+        output << std::endl;
+    }
+}
+
+std::unique_ptr<SheetInterface> CreateSheet() {
+    return std::make_unique<Sheet>();
 }
